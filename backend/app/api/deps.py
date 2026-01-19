@@ -1,0 +1,21 @@
+"""
+Dependencias comunes para los endpoints
+"""
+
+from typing import Generator
+from fastapi import Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db
+from app.core.security import get_current_user, get_current_admin
+from app.models.user import User
+
+
+# Re-exportar para uso fácil en endpoints
+__all__ = [
+    "get_db",
+    "get_current_user", 
+    "get_current_admin",
+    "Session",
+    "User",
+]

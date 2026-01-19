@@ -1,0 +1,24 @@
+# FastAPI y servidor
+fastapi==0.109.2
+uvicorn[standard]==0.27.1
+
+# Base de datos
+sqlalchemy==2.0.25
+alembic==1.13.1
+
+# Validación
+pydantic==2.6.1
+pydantic-settings==2.1.0
+
+# Autenticación
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.9
+
+# OCR (para Sprint 5)
+# pytesseract==0.3.10
+# opencv-python==4.9.0.80
+# Pillow==10.2.0
+
+# Utilidades
+python-dateutil==2.8.2

@@ -1,0 +1,62 @@
+# Dependencias
+node_modules/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.so
+.eggs/
+*.egg-info/
+*.egg
+
+# Entornos
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Base de datos
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js
+.next/
+out/
+build/
+.vercel
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+.nox/
+
+# Build artifacts
+dist/
+*.pyc
+
+# Uploads y backups locales
+uploads/
+backups/
+
+# Archivos de Tauri (futuro)
+src-tauri/target/

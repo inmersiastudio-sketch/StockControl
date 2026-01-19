@@ -3,7 +3,7 @@ Utilidades de seguridad: hash de contraseñas y JWT
 """
 
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Any
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
@@ -11,7 +11,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.database import get_db
+from app.db.session import get_db
 
 # Configuración de hash de contraseñas
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

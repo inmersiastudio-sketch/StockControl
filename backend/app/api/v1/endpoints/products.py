@@ -8,11 +8,12 @@ from sqlalchemy import or_
 from typing import List, Optional
 from datetime import date, timedelta
 
-from app.core.database import get_db
+from app.db.session import get_db
 from app.core.security import get_current_user, get_current_admin
 from app.core.config import settings
 from app.models.user import User
-from app.models.product import Product, ProductLot
+from app.models.product import Product
+from app.models.product_lot import ProductLot
 from app.models.category import Category
 from app.schemas.product import (
     ProductCreate, ProductUpdate, ProductResponse, 

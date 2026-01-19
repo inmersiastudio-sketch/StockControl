@@ -7,7 +7,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
 
-from app.core.database import get_db
+from app.db.session import get_db
 from app.core.security import (
     verify_password, 
     get_password_hash, 

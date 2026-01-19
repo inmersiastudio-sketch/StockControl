@@ -8,15 +8,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
-from app.core.database import create_tables
+from app.db.base import Base
+from app.db.session import engine
 from app.api.v1.router import api_router
+
+# Importar todos los modelos para que se registren en Base
+from app.models import (
+    User, Category, Supplier, Product, ProductLot,
+    Purchase, PurchaseItem, Sale, SaleItem,
+    CashMovement, CashClosure
+)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Eventos de inicio y cierre de la aplicación"""
     # Startup: crear tablas si no existen
-    create_tables()
+    Base.metadata.create_all(bind=engine)
     print("✅ Base de datos inicializada")
     yield
     # Shutdown

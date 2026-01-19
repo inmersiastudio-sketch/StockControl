@@ -13,6 +13,7 @@ import {
   Wallet,
   LayoutDashboard,
   ScanLine,
+  AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -33,6 +34,12 @@ const menuItems = [
     title: 'Productos',
     href: '/productos',
     icon: Package,
+    roles: ['admin', 'employee'],
+  },
+  {
+    title: 'Stock',
+    href: '/stock',
+    icon: AlertTriangle,
     roles: ['admin', 'employee'],
   },
   {

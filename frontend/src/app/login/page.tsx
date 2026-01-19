@@ -35,10 +35,13 @@ export default function LoginPage() {
     setError(null);
 
     try {
+      console.log('Intentando login...');
       await login(data.username, data.password);
+      console.log('Login exitoso, redirigiendo...');
       toast.success('¡Bienvenido!');
       router.push('/ventas');
     } catch (err: any) {
+      console.error('Error en login:', err);
       const errorMsg = err.response?.data?.detail || 'Error al iniciar sesión';
       setError(errorMsg);
       toast.error(errorMsg);

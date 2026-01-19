@@ -1,10 +1,9 @@
 import axios from 'axios';
 
 // Crear instancia de axios con configuración base
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
+// Usamos URL relativa para aprovechar el proxy de Next.js en desarrollo
 const api = axios.create({
-  baseURL: `${API_URL}/api/v1`,
+  baseURL: '/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },

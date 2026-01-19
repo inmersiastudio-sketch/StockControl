@@ -2,7 +2,7 @@
 Modelo de Proveedor
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, Text
+from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -27,7 +27,3 @@ class Supplier(Base):
     
     def __repr__(self):
         return f"<Supplier {self.name}>"
-
-
-# Importar Boolean que faltó
-from sqlalchemy import Boolean

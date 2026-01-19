@@ -2,195 +2,147 @@
 Endpoints de Proveedores
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from sqlalchemy import func
 from typing import List
+from fastapi import APIRouter, HTTPException, status
 
-from app.db.session import get_db
-from app.core.security import get_current_user, get_current_admin
-from app.models.user import User
+from app.api.deps import DBSession, CurrentAdmin
 from app.models.supplier import Supplier
-from app.models.purchase import Purchase
-from app.schemas.supplier import SupplierCreate, SupplierUpdate, SupplierResponse
+from app.schemas.supplier import (
+    SupplierCreate,
+    SupplierUpdate,
+    SupplierResponse,
+)
 
 router = APIRouter()
 
 
 @router.get("/", response_model=List[SupplierResponse])
-async def list_suppliers(
+def list_suppliers(
+    db: DBSession,
+    current_user: CurrentAdmin,
     skip: int = 0,
     limit: int = 100,
-    active_only: bool = True,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_admin)
 ):
     """
-    Listar proveedores (Solo Admin)
+    Listar todos los proveedores
     """
-    query = db.query(Supplier)
-    
-    if active_only:
-        query = query.filter(Supplier.is_active == True)
-    
-    suppliers = query.offset(skip).limit(limit).all()
-    
-    result = []
-    for sup in suppliers:
-        # Calcular estadísticas
-        purchases = db.query(Purchase).filter(Purchase.supplier_id == sup.id).all()
-        total_purchases = len(purchases)
-        total_spent = sum(p.total for p in purchases)
-        
-        sup_response = SupplierResponse(
-            id=sup.id,
-            name=sup.name,
-            cuit=sup.cuit,
-            phone=sup.phone,
-            email=sup.email,
-            address=sup.address,
-            notes=sup.notes,
-            is_active=sup.is_active,
-            created_at=sup.created_at,
-            total_purchases=total_purchases,
-            total_spent=total_spent
-        )
-        result.append(sup_response)
-    
-    return result
-
-
-@router.post("/", response_model=SupplierResponse)
-async def create_supplier(
-    supplier_data: SupplierCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_admin)
-):
-    """
-    Crear un proveedor (Solo Admin)
-    """
-    new_supplier = Supplier(
-        name=supplier_data.name,
-        cuit=supplier_data.cuit,
-        phone=supplier_data.phone,
-        email=supplier_data.email,
-        address=supplier_data.address,
-        notes=supplier_data.notes,
-        is_active=True
-    )
-    
-    db.add(new_supplier)
-    db.commit()
-    db.refresh(new_supplier)
-    
-    return SupplierResponse(
-        id=new_supplier.id,
-        name=new_supplier.name,
-        cuit=new_supplier.cuit,
-        phone=new_supplier.phone,
-        email=new_supplier.email,
-        address=new_supplier.address,
-        notes=new_supplier.notes,
-        is_active=new_supplier.is_active,
-        created_at=new_supplier.created_at,
-        total_purchases=0,
-        total_spent=0
-    )
+    suppliers = db.query(Supplier).order_by(Supplier.name).offset(skip).limit(limit).all()
+    return suppliers
 
 
 @router.get("/{supplier_id}", response_model=SupplierResponse)
-async def get_supplier(
+def get_supplier(
     supplier_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_admin)
+    db: DBSession,
+    current_user: CurrentAdmin,
 ):
     """
-    Obtener un proveedor por ID (Solo Admin)
+    Obtener proveedor por ID
     """
     supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
     if not supplier:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Proveedor no encontrado"
+            detail="Proveedor no encontrado",
         )
+    return supplier
+
+
+@router.post("/", response_model=SupplierResponse, status_code=status.HTTP_201_CREATED)
+def create_supplier(
+    supplier_in: SupplierCreate,
+    db: DBSession,
+    current_user: CurrentAdmin,
+):
+    """
+    Crear nuevo proveedor
+    """
+    # Verificar CUIT único si se proporciona
+    if supplier_in.cuit:
+        existing = db.query(Supplier).filter(Supplier.cuit == supplier_in.cuit).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ya existe un proveedor con ese CUIT",
+            )
     
-    # Calcular estadísticas
-    purchases = db.query(Purchase).filter(Purchase.supplier_id == supplier.id).all()
-    
-    return SupplierResponse(
-        id=supplier.id,
-        name=supplier.name,
-        cuit=supplier.cuit,
-        phone=supplier.phone,
-        email=supplier.email,
-        address=supplier.address,
-        notes=supplier.notes,
-        is_active=supplier.is_active,
-        created_at=supplier.created_at,
-        total_purchases=len(purchases),
-        total_spent=sum(p.total for p in purchases)
+    supplier = Supplier(
+        name=supplier_in.name,
+        cuit=supplier_in.cuit,
+        phone=supplier_in.phone,
+        email=supplier_in.email,
+        address=supplier_in.address,
+        notes=getattr(supplier_in, 'notes', None),
+        is_active=True
     )
+    db.add(supplier)
+    db.commit()
+    db.refresh(supplier)
+    
+    return supplier
 
 
-@router.patch("/{supplier_id}", response_model=SupplierResponse)
-async def update_supplier(
+@router.put("/{supplier_id}", response_model=SupplierResponse)
+def update_supplier(
     supplier_id: int,
-    supplier_data: SupplierUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_admin)
+    supplier_in: SupplierUpdate,
+    db: DBSession,
+    current_user: CurrentAdmin,
 ):
     """
-    Actualizar un proveedor (Solo Admin)
+    Actualizar proveedor
     """
     supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
     if not supplier:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Proveedor no encontrado"
+            detail="Proveedor no encontrado",
         )
     
-    update_data = supplier_data.model_dump(exclude_unset=True)
+    update_data = supplier_in.model_dump(exclude_unset=True)
+    
+    # Validar CUIT único si se cambia
+    if "cuit" in update_data and update_data["cuit"] and update_data["cuit"] != supplier.cuit:
+        existing = db.query(Supplier).filter(Supplier.cuit == update_data["cuit"]).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ya existe un proveedor con ese CUIT",
+            )
+    
     for field, value in update_data.items():
         setattr(supplier, field, value)
     
     db.commit()
     db.refresh(supplier)
     
-    # Calcular estadísticas
-    purchases = db.query(Purchase).filter(Purchase.supplier_id == supplier.id).all()
-    
-    return SupplierResponse(
-        id=supplier.id,
-        name=supplier.name,
-        cuit=supplier.cuit,
-        phone=supplier.phone,
-        email=supplier.email,
-        address=supplier.address,
-        notes=supplier.notes,
-        is_active=supplier.is_active,
-        created_at=supplier.created_at,
-        total_purchases=len(purchases),
-        total_spent=sum(p.total for p in purchases)
-    )
+    return supplier
 
 
-@router.delete("/{supplier_id}")
-async def delete_supplier(
+@router.delete("/{supplier_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_supplier(
     supplier_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_admin)
+    db: DBSession,
+    current_user: CurrentAdmin,
 ):
     """
-    Eliminar (desactivar) un proveedor (Solo Admin)
+    Eliminar proveedor (solo si no tiene compras)
     """
     supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
     if not supplier:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Proveedor no encontrado"
+            detail="Proveedor no encontrado",
         )
     
-    supplier.is_active = False
+    # Verificar que no tenga compras
+    if supplier.purchases:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"No se puede eliminar. Tiene {len(supplier.purchases)} compras registradas",
+        )
+    
+    db.delete(supplier)
     db.commit()
     
-    return {"message": f"Proveedor '{supplier.name}' desactivado"}
+    return None

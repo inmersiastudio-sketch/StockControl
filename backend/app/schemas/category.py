@@ -23,9 +23,8 @@ class CategoryResponse(BaseModel):
     """Schema de respuesta para categoría"""
     id: int
     name: str
-    description: Optional[str]
+    description: Optional[str] = None
     created_at: datetime
-    product_count: int = 0  # Cantidad de productos en esta categoría
     
     class Config:
         from_attributes = True

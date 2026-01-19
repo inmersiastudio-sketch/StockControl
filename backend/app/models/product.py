@@ -14,7 +14,9 @@ class Product(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     code = Column(String(50), unique=True, nullable=False, index=True)
+    barcode = Column(String(50), nullable=True, index=True)  # Código de barras
     name = Column(String(100), nullable=False, index=True)
+    description = Column(String(500), nullable=True)
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=False)
     cost = Column(Float, default=0.0, nullable=False)  # Costo promedio
     price = Column(Float, nullable=False)  # Precio de venta

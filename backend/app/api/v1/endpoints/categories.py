@@ -2,158 +2,96 @@
 Endpoints de Categorías
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
 from typing import List
+from fastapi import APIRouter, HTTPException, status, Depends
+from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.core.security import get_current_user, get_current_admin
-from app.models.user import User
+from app.api.deps import DBSession, CurrentAdmin
 from app.models.category import Category
-from app.models.product import Product
-from app.schemas.category import CategoryCreate, CategoryUpdate, CategoryResponse
+from app.schemas.category import CategoryCreate, CategoryResponse
 
 router = APIRouter()
 
 
 @router.get("/", response_model=List[CategoryResponse])
-async def list_categories(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+def list_categories(db: Session = Depends(get_db)):
     """
-    Listar todas las categorías
+    Listar todas las categorías (sin autenticación requerida)
     """
-    categories = db.query(Category).all()
-    
-    result = []
-    for cat in categories:
-        cat_dict = CategoryResponse.model_validate(cat)
-        cat_dict.product_count = db.query(Product).filter(Product.category_id == cat.id).count()
-        result.append(cat_dict)
-    
-    return result
+    categories = db.query(Category).order_by(Category.name).all()
+    return categories
 
 
-@router.post("/", response_model=CategoryResponse)
-async def create_category(
-    category_data: CategoryCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_admin)
+@router.post("/", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)
+def create_category(
+    category_in: CategoryCreate,
+    db: DBSession,
+    current_user: CurrentAdmin,
 ):
     """
-    Crear una categoría (Solo Admin)
+    Crear nueva categoría (solo admin)
     """
-    # Verificar si ya existe
-    existing = db.query(Category).filter(Category.name == category_data.name).first()
+    # Verificar que no exista
+    existing = db.query(Category).filter(Category.name == category_in.name).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"La categoría '{category_data.name}' ya existe"
+            detail="La categoría ya existe",
         )
     
-    new_category = Category(
-        name=category_data.name,
-        description=category_data.description
+    category = Category(
+        name=category_in.name,
+        description=getattr(category_in, 'description', None)
     )
-    
-    db.add(new_category)
-    db.commit()
-    db.refresh(new_category)
-    
-    response = CategoryResponse.model_validate(new_category)
-    response.product_count = 0
-    return response
-
-
-@router.get("/{category_id}", response_model=CategoryResponse)
-async def get_category(
-    category_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """
-    Obtener una categoría por ID
-    """
-    category = db.query(Category).filter(Category.id == category_id).first()
-    if not category:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Categoría no encontrada"
-        )
-    
-    response = CategoryResponse.model_validate(category)
-    response.product_count = db.query(Product).filter(Product.category_id == category.id).count()
-    return response
-
-
-@router.patch("/{category_id}", response_model=CategoryResponse)
-async def update_category(
-    category_id: int,
-    category_data: CategoryUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_admin)
-):
-    """
-    Actualizar una categoría (Solo Admin)
-    """
-    category = db.query(Category).filter(Category.id == category_id).first()
-    if not category:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Categoría no encontrada"
-        )
-    
-    # Verificar nombre duplicado
-    if category_data.name:
-        existing = db.query(Category).filter(
-            Category.name == category_data.name,
-            Category.id != category_id
-        ).first()
-        if existing:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ya existe otra categoría con el nombre '{category_data.name}'"
-            )
-    
-    update_data = category_data.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(category, field, value)
-    
+    db.add(category)
     db.commit()
     db.refresh(category)
     
-    response = CategoryResponse.model_validate(category)
-    response.product_count = db.query(Product).filter(Product.category_id == category.id).count()
-    return response
+    return category
 
 
-@router.delete("/{category_id}")
-async def delete_category(
+@router.get("/{category_id}", response_model=CategoryResponse)
+def get_category(
     category_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_admin)
 ):
     """
-    Eliminar una categoría (Solo Admin)
-    Solo si no tiene productos asociados.
+    Obtener categoría por ID (sin auth)
     """
     category = db.query(Category).filter(Category.id == category_id).first()
     if not category:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Categoría no encontrada"
+            detail="Categoría no encontrada",
+        )
+    return category
+
+
+@router.delete("/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_category(
+    category_id: int,
+    db: DBSession,
+    current_user: CurrentAdmin,
+):
+    """
+    Eliminar categoría (solo si no tiene productos)
+    """
+    category = db.query(Category).filter(Category.id == category_id).first()
+    if not category:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Categoría no encontrada",
         )
     
-    # Verificar si tiene productos
-    product_count = db.query(Product).filter(Product.category_id == category_id).count()
-    if product_count > 0:
+    # Verificar que no tenga productos
+    if category.products:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"No se puede eliminar. Tiene {product_count} productos asociados."
+            detail=f"No se puede eliminar. Hay {len(category.products)} productos en esta categoría",
         )
     
     db.delete(category)
     db.commit()
     
-    return {"message": f"Categoría '{category.name}' eliminada"}
+    return None

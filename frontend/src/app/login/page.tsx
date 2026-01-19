@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuthStore } from '@/store/auth-store';
 import { Package } from 'lucide-react';
+import { toast } from 'sonner';
 
 const loginSchema = z.object({
   username: z.string().min(1, 'El usuario es requerido'),
@@ -35,9 +36,12 @@ export default function LoginPage() {
 
     try {
       await login(data.username, data.password);
-      router.push('/dashboard');
+      toast.success('¡Bienvenido!');
+      router.push('/ventas');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Error al iniciar sesión');
+      const errorMsg = err.response?.data?.detail || 'Error al iniciar sesión';
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsLoading(false);
     }

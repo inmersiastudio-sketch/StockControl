@@ -1,8 +1,10 @@
 import axios from 'axios';
 
 // Crear instancia de axios con configuración base
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1',
+  baseURL: `${API_URL}/api/v1`,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -48,8 +50,15 @@ export default api;
 
 // Auth
 export const authApi = {
-  login: (username: string, password: string) =>
-    api.post('/auth/login', { username, password }),
+  login: (username: string, password: string) => {
+    // OAuth2 requiere form-urlencoded
+    const formData = new URLSearchParams();
+    formData.append('username', username);
+    formData.append('password', password);
+    return api.post('/auth/login', formData, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+  },
   
   me: () => api.get('/auth/me'),
   

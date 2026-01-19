@@ -31,11 +31,16 @@ export const useAuthStore = create<AuthState>()(
       isLoading: true,
 
       login: async (username: string, password: string) => {
-        const response = await authApi.login(username, password);
-        const { access_token, user } = response.data;
+        // Paso 1: Login para obtener token
+        const loginResponse = await authApi.login(username, password);
+        const { access_token } = loginResponse.data;
         
-        // Guardar token en localStorage (para api.ts)
+        // Guardar token en localStorage (para api.ts interceptor)
         localStorage.setItem('token', access_token);
+        
+        // Paso 2: Obtener datos del usuario
+        const userResponse = await authApi.me();
+        const user = userResponse.data;
         
         set({
           user,
